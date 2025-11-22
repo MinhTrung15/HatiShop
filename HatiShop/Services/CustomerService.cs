@@ -1,5 +1,4 @@
 ﻿// Services/CustomerService.cs
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using HatiShop.Models;
 using HatiShop.Repositories;
@@ -26,33 +25,29 @@ namespace HatiShop.Services
         {
             try
             {
-                // Check unique constraints using existing procedures
-                var existingUsernames = await ExecuteStoredProcedureAsync("LoadUsername");
-                if (existingUsernames.Any(u => u.ToString() == customer.Username))
+                if (await _customerRepository.GetByIdAsync(customer.Id) != null)
+                    return new ServiceResult { Success = false, Message = "Mã KH đã tồn tại" };
+
+                if (await _customerRepository.GetByUsernameAsync(customer.Username) != null)
                     return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
 
-                var existingEmails = await ExecuteStoredProcedureAsync("LoadEmail");
-                if (!string.IsNullOrEmpty(customer.Email) && existingEmails.Any(e => e.ToString() == customer.Email))
+                if (!string.IsNullOrEmpty(customer.Email) &&
+                    await _customerRepository.GetByEmailAsync(customer.Email) != null)
                     return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
 
-                var existingPhones = await ExecuteStoredProcedureAsync("LoadPhone");
-                if (!string.IsNullOrEmpty(customer.PhoneNumber) && existingPhones.Any(p => p.ToString() == customer.PhoneNumber))
+                if (!string.IsNullOrEmpty(customer.PhoneNumber) &&
+                    await _customerRepository.GetByPhoneAsync(customer.PhoneNumber) != null)
                     return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
 
-                // Handle avatar upload
-                if (avatarFile != null)
+                if (avatarFile != null && avatarFile.Length > 0)
                 {
                     customer.AvatarPath = await SaveAvatarAsync(avatarFile);
                 }
 
-                // Generate ID if not provided
-                if (string.IsNullOrEmpty(customer.Id))
-                {
-                    customer.Id = "CUS_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-                }
+                if (string.IsNullOrEmpty(customer.Rank))
+                    customer.Rank = "ĐỒNG";
 
-                // Execute stored procedure for creation
-                var result = await ExecuteCreateCustomerProcedureAsync(customer);
+                var result = await _customerRepository.CreateAsync(customer);
 
                 return new ServiceResult
                 {
@@ -66,55 +61,6 @@ namespace HatiShop.Services
             }
         }
 
-        private async Task<List<object>> ExecuteStoredProcedureAsync(string procedureName)
-        {
-            var result = new List<object>();
-            using (var connection = new SqlConnection(_context.Database.GetConnectionString()))
-            {
-                await connection.OpenAsync();
-                using (var command = new SqlCommand(procedureName, connection))
-                {
-                    command.CommandType = System.Data.CommandType.StoredProcedure;
-                    using (var reader = await command.ExecuteReaderAsync())
-                    {
-                        while (await reader.ReadAsync())
-                        {
-                            result.Add(reader[0]);
-                        }
-                    }
-                }
-            }
-            return result;
-        }
-
-        private async Task<bool> ExecuteCreateCustomerProcedureAsync(Customer customer)
-        {
-            try
-            {
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC CreateNewCustomer @Id, @Username, @Password, @FullName, @Gender, @BirthDate, @PhoneNumber, @Email, @Address, @AvatarPath, @Revenue, @Rank",
-                    new SqlParameter("@Id", customer.Id),
-                    new SqlParameter("@Username", customer.Username),
-                    new SqlParameter("@Password", customer.Password),
-                    new SqlParameter("@FullName", customer.FullName),
-                    new SqlParameter("@Gender", (object)customer.Gender ?? DBNull.Value),
-                    new SqlParameter("@BirthDate", (object)customer.BirthDate ?? DBNull.Value),
-                    new SqlParameter("@PhoneNumber", (object)customer.PhoneNumber ?? DBNull.Value),
-                    new SqlParameter("@Email", (object)customer.Email ?? DBNull.Value),
-                    new SqlParameter("@Address", (object)customer.Address ?? DBNull.Value),
-                    new SqlParameter("@AvatarPath", (object)customer.AvatarPath ?? DBNull.Value),
-                    new SqlParameter("@Revenue", customer.Revenue),
-                    new SqlParameter("@Rank", customer.Rank)
-                );
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
-        // Các phương thức khác giữ nguyên...
         public async Task<ServiceResult> UpdateCustomerAsync(Customer customer, IFormFile? avatarFile)
         {
             try
@@ -123,39 +69,56 @@ namespace HatiShop.Services
                 if (existingCustomer == null)
                     return new ServiceResult { Success = false, Message = "Không tìm thấy khách hàng" };
 
-                // Handle avatar upload
-                if (avatarFile != null)
+                var existingUsername = await _customerRepository.GetByUsernameAsync(customer.Username);
+                if (existingUsername != null && existingUsername.Id != customer.Id)
+                    return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
+
+                if (!string.IsNullOrEmpty(customer.Email))
+                {
+                    var existingEmail = await _customerRepository.GetByEmailAsync(customer.Email);
+                    if (existingEmail != null && existingEmail.Id != customer.Id)
+                        return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
+                }
+
+                if (!string.IsNullOrEmpty(customer.PhoneNumber))
+                {
+                    var existingPhone = await _customerRepository.GetByPhoneAsync(customer.PhoneNumber);
+                    if (existingPhone != null && existingPhone.Id != customer.Id)
+                        return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
+                }
+
+                string avatarPath = existingCustomer.AvatarPath;
+                if (avatarFile != null && avatarFile.Length > 0)
                 {
                     if (!string.IsNullOrEmpty(existingCustomer.AvatarPath))
                     {
                         DeleteAvatar(existingCustomer.AvatarPath);
                     }
-                    customer.AvatarPath = await SaveAvatarAsync(avatarFile);
-                }
-                else
-                {
-                    customer.AvatarPath = existingCustomer.AvatarPath;
+                    avatarPath = await SaveAvatarAsync(avatarFile);
                 }
 
-                // Execute stored procedure for update
-                await _context.Database.ExecuteSqlRawAsync(
-                    "EXEC EditCustomerInfo @Id, @FullName, @Gender, @BirthDate, @PhoneNumber, @Email, @Address, @AvatarPath, @Revenue, @Rank",
-                    new SqlParameter("@Id", customer.Id),
-                    new SqlParameter("@FullName", customer.FullName),
-                    new SqlParameter("@Gender", (object)customer.Gender ?? DBNull.Value),
-                    new SqlParameter("@BirthDate", (object)customer.BirthDate ?? DBNull.Value),
-                    new SqlParameter("@PhoneNumber", (object)customer.PhoneNumber ?? DBNull.Value),
-                    new SqlParameter("@Email", (object)customer.Email ?? DBNull.Value),
-                    new SqlParameter("@Address", (object)customer.Address ?? DBNull.Value),
-                    new SqlParameter("@AvatarPath", (object)customer.AvatarPath ?? DBNull.Value),
-                    new SqlParameter("@Revenue", customer.Revenue),
-                    new SqlParameter("@Rank", customer.Rank)
-                );
+                var customerToUpdate = new Customer
+                {
+                    Id = customer.Id,
+                    Username = customer.Username,
+                    Password = customer.Password ?? existingCustomer.Password,
+                    FullName = customer.FullName,
+                    Gender = customer.Gender,
+                    BirthDate = customer.BirthDate,
+                    PhoneNumber = customer.PhoneNumber,
+                    Email = customer.Email,
+                    Address = customer.Address,
+                    AvatarPath = avatarPath,
+                    Revenue = customer.Revenue,
+                    Rank = customer.Rank ?? existingCustomer.Rank
+                };
+
+                var result = await _customerRepository.UpdateAsync(customerToUpdate);
 
                 return new ServiceResult
                 {
-                    Success = true,
-                    Message = "Cập nhật khách hàng thành công"
+                    Success = result,
+                    Message = result ? "Cập nhật khách hàng thành công" : "Cập nhật khách hàng thất bại"
                 };
             }
             catch (Exception ex)
@@ -195,7 +158,6 @@ namespace HatiShop.Services
             }
         }
 
-        // Các phương thức khác giữ nguyên từ trước...
         public async Task<ServiceResult> DeleteCustomerAsync(string id)
         {
             try
@@ -204,13 +166,11 @@ namespace HatiShop.Services
                 if (customer == null)
                     return new ServiceResult { Success = false, Message = "Không tìm thấy khách hàng" };
 
-                // Delete avatar file if exists
                 if (!string.IsNullOrEmpty(customer.AvatarPath))
                 {
                     DeleteAvatar(customer.AvatarPath);
                 }
 
-                // Use repository to delete
                 var result = await _customerRepository.DeleteAsync(id);
                 return new ServiceResult
                 {
@@ -236,6 +196,9 @@ namespace HatiShop.Services
 
         public async Task<IEnumerable<Customer>> SearchCustomersAsync(string searchType, string searchValue)
         {
+            if (string.IsNullOrEmpty(searchValue))
+                return await _customerRepository.GetAllAsync();
+
             return searchType?.ToLower() switch
             {
                 "name" => await _customerRepository.SearchByNameAsync(searchValue),

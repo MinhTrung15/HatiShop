@@ -11,13 +11,5 @@ namespace HatiShop.Services
         Task<Customer?> GetCustomerByIdAsync(string id);
         Task<IEnumerable<Customer>> GetAllCustomersAsync();
         Task<IEnumerable<Customer>> SearchCustomersAsync(string searchType, string searchValue);
-        Task<string> SaveAvatarAsync(IFormFile avatarFile);
-    }
-
-    public class ServiceResult
-    {
-        public bool Success { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public object? Data { get; set; }
     }
 }

@@ -14,6 +14,24 @@ namespace HatiShop.Repositories
             _context = context;
         }
 
+        // Các method hiện có giữ nguyên...
+
+        // Thêm method mới
+        public async Task<IEnumerable<Staff>> SearchByRoleAsync(string role)
+        {
+            return await _context.Staff
+                .Where(s => s.Role == role)
+                .OrderBy(s => s.FullName)
+                .ToListAsync();
+        }
+
+        public async Task<Staff?> LoginAsync(string username, string password)
+        {
+            return await _context.Staff
+                .FirstOrDefaultAsync(s => s.Username == username && s.Password == password);
+        }
+
+        // Các method khác giữ nguyên từ trước...
         public async Task<IEnumerable<Staff>> GetAllAsync()
         {
             return await _context.Staff
@@ -45,69 +63,6 @@ namespace HatiShop.Repositories
                 .FirstOrDefaultAsync(s => s.PhoneNumber == phone);
         }
 
-        public async Task<bool> CreateAsync(Staff staff)
-        {
-            try
-            {
-                await _context.Staff.AddAsync(staff);
-                return await SaveAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error creating staff: {ex.Message}");
-                return false;
-            }
-        }
-
-        public async Task<bool> UpdateAsync(Staff staff)
-        {
-            try
-            {
-                _context.Staff.Update(staff);
-                return await SaveAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error updating staff: {ex.Message}");
-                return false;
-            }
-        }
-
-        public async Task<bool> DeleteAsync(string id)
-        {
-            try
-            {
-                var staff = await GetByIdAsync(id);
-                if (staff == null) return false;
-
-                _context.Staff.Remove(staff);
-                return await SaveAsync();
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error deleting staff: {ex.Message}");
-                return false;
-            }
-        }
-
-        public async Task<bool> UsernameExistsAsync(string username)
-        {
-            return await _context.Staff
-                .AnyAsync(s => s.Username == username);
-        }
-
-        public async Task<bool> EmailExistsAsync(string email)
-        {
-            return await _context.Staff
-                .AnyAsync(s => s.Email == email);
-        }
-
-        public async Task<bool> PhoneExistsAsync(string phone)
-        {
-            return await _context.Staff
-                .AnyAsync(s => s.PhoneNumber == phone);
-        }
-
         public async Task<IEnumerable<Staff>> SearchByNameAsync(string name)
         {
             return await _context.Staff
@@ -132,31 +87,73 @@ namespace HatiShop.Repositories
                 .ToListAsync();
         }
 
-        public async Task<IEnumerable<Staff>> SearchByRoleAsync(string role)
-        {
-            return await _context.Staff
-                .Where(s => s.Role == role)
-                .OrderBy(s => s.FullName)
-                .ToListAsync();
-        }
-
-        public async Task<Staff?> LoginAsync(string username, string password)
-        {
-            return await _context.Staff
-                .FirstOrDefaultAsync(s => s.Username == username && s.Password == password);
-        }
-
-        private async Task<bool> SaveAsync()
+        public async Task<bool> CreateAsync(Staff staff)
         {
             try
             {
+                await _context.Staff.AddAsync(staff);
                 return await _context.SaveChangesAsync() > 0;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error saving changes: {ex.Message}");
+                Console.WriteLine($"Error creating staff: {ex.Message}");
                 return false;
             }
+        }
+
+        public async Task<bool> UpdateAsync(Staff staff)
+        {
+            try
+            {
+                var existingStaff = await _context.Staff.FindAsync(staff.Id);
+                if (existingStaff == null)
+                    return false;
+
+                _context.Entry(existingStaff).CurrentValues.SetValues(staff);
+                _context.Entry(existingStaff).State = EntityState.Modified;
+
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error updating staff: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> DeleteAsync(string id)
+        {
+            try
+            {
+                var staff = await GetByIdAsync(id);
+                if (staff == null) return false;
+
+                _context.Staff.Remove(staff);
+                return await _context.SaveChangesAsync() > 0;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error deleting staff: {ex.Message}");
+                return false;
+            }
+        }
+
+        public async Task<bool> UsernameExistsAsync(string username)
+        {
+            return await _context.Staff
+                .AnyAsync(s => s.Username == username);
+        }
+
+        public async Task<bool> EmailExistsAsync(string email)
+        {
+            return await _context.Staff
+                .AnyAsync(s => s.Email == email);
+        }
+
+        public async Task<bool> PhoneExistsAsync(string phone)
+        {
+            return await _context.Staff
+                .AnyAsync(s => s.PhoneNumber == phone);
         }
     }
 }

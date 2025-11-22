@@ -1,0 +1,258 @@
+﻿@model HatiShop.Models.Bill
+
+@{
+    ViewData["Title"] = "Tạo đơn hàng mới";
+    var products = ViewData["Products"] as List<HatiShop.Models.Product>;
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-sm-6">
+            <h1 class="h3 mb-0 text-gray-800">@ViewData["Title"]</h1>
+        </div>
+        <div class="col-sm-6 text-right">
+            <a asp-action="Index" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Quay lại danh sách
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Thông tin đơn hàng</h6>
+        </div>
+        <div class="card-body">
+            <form asp-action="Create" id="billForm">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label asp-for="Id" class="control-label">Mã đơn hàng</label>
+                            <input asp-for="Id" class="form-control" placeholder="Để trống để tự động tạo" />
+                            <span asp-validation-for="Id" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="CustomerId" class="control-label">Khách hàng</label>
+                            <select asp-for="CustomerId" class="form-control" asp-items="ViewBag.CustomerId" required>
+                                <option value="">-- Chọn khách hàng --</option>
+                            </select>
+                            <span asp-validation-for="CustomerId" class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label asp-for="StaffId" class="control-label">Nhân viên</label>
+                            <select asp-for="StaffId" class="form-control" asp-items="ViewBag.StaffId" required>
+                                <option value="">-- Chọn nhân viên --</option>
+                            </select>
+                            <span asp-validation-for="StaffId" class="text-danger"></span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <div class="card border-left-primary shadow h-100 py-2">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                            Tổng tiền
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-gray-800" id="originalPriceDisplay">0 ₫</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-receipt fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-left-warning shadow h-100 py-2 mt-3">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                            Giảm giá
+                                        </div>
+                                        <input asp-for="DiscountAmount" class="form-control border-0 bg-transparent p-0 h5 mb-0 font-weight-bold text-gray-800" type="number" min="0" value="0" id="discountAmount" />
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-tag fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-left-success shadow h-100 py-2 mt-3">
+                            <div class="card-body">
+                                <div class="row no-gutters align-items-center">
+                                    <div class="col mr-2">
+                                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                            Thành tiền
+                                        </div>
+                                        <div class="h5 mb-0 font-weight-bold text-success" id="discountedTotalDisplay">0 ₫</div>
+                                    </div>
+                                    <div class="col-auto">
+                                        <i class="fas fa-dollar-sign fa-2x text-gray-300"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="row">
+                    <div class="col-12">
+                        <h5 class="font-weight-bold text-primary mb-3">Chi tiết sản phẩm</h5>
+                        <div id="billDetails">
+                            <div class="bill-detail-item card mb-3">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-5">
+                                            <select name="billDetails[0].ProductId" class="form-control product-select" required>
+                                                <option value="">-- Chọn sản phẩm --</option>
+                                                @foreach (var product in products)
+                                                {
+                                                    <option value="@product.Id" data-price="@product.Price">@product.Name - @product.Price.ToString("N0") ₫</option>
+                                                }
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="number" name="billDetails[0].Quantity" class="form-control quantity" min="1" value="1" required />
+                                        </div>
+                                        <div class="col-md-3">
+                                            <input type="text" class="form-control total text-success font-weight-bold" value="0 ₫" readonly />
+                                        </div>
+                                        <div class="col-md-1">
+                                            <button type="button" class="btn btn-danger btn-circle remove-item">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button type="button" id="addProduct" class="btn btn-secondary btn-icon-split">
+                            <span class="icon text-white-50">
+                                <i class="fas fa-plus"></i>
+                            </span>
+                            <span class="text">Thêm sản phẩm</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group mt-4 text-center">
+                    <button type="submit" class="btn btn-primary btn-icon-split">
+                        <span class="icon text-white-50">
+                            <i class="fas fa-check"></i>
+                        </span>
+                        <span class="text">Tạo đơn hàng</span>
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary btn-icon-split">
+                        <span class="icon text-white-50">
+                            <i class="fas fa-times"></i>
+                        </span>
+                        <span class="text">Hủy bỏ</span>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            let itemCount = 1;
+
+            // Thêm sản phẩm mới
+            $('#addProduct').click(function () {
+                const newItem = $(`<div class="bill-detail-item card mb-3">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-5">
+                                        <select name="billDetails[${itemCount}].ProductId" class="form-control product-select" required>
+                                            <option value="">-- Chọn sản phẩm --</option>
+        @foreach (var product in products)
+        {
+                                                    <option value="@product.Id" data-price="@product.Price">@product.Name - @product.Price.ToString("N0") ₫</option>
+        }
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="number" name="billDetails[${itemCount}].Quantity" class="form-control quantity" min="1" value="1" required />
+                                    </div>
+                                    <div class="col-md-3">
+                                        <input type="text" class="form-control total text-success font-weight-bold" value="0 ₫" readonly />
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger btn-circle remove-item">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`);
+
+                $('#billDetails').append(newItem);
+                itemCount++;
+            });
+
+            // Xóa sản phẩm
+            $(document).on('click', '.remove-item', function () {
+                if ($('.bill-detail-item').length > 1) {
+                    $(this).closest('.bill-detail-item').remove();
+                    calculateTotal();
+                }
+            });
+            function calculateTotal() {
+                let originalPrice = 0;
+
+                $('.bill-detail-item').each(function () {
+                    // 🟢 DÙNG parseFloat() VÌ GIỜ LÀ double
+                    const price = parseFloat($(this).find('.product-select option:selected').data('price')) || 0;
+                    const quantity = parseInt($(this).find('.quantity').val()) || 0;
+                    const total = price * quantity;
+                    originalPrice += total;
+
+                    $(this).find('.total').val(total.toLocaleString() + ' ₫');
+                });
+
+                const discountAmount = parseFloat($('#discountAmount').val()) || 0;
+                const discountedTotal = Math.max(0, originalPrice - discountAmount);
+
+                $('#originalPriceDisplay').text(originalPrice.toLocaleString() + ' ₫');
+                $('#discountedTotalDisplay').text(discountedTotal.toLocaleString() + ' ₫');
+            }
+
+            // Tính toán khi thay đổi
+            $(document).on('change', '.product-select, .quantity, #discountAmount', function () {
+                calculateTotal();
+            });
+
+            function calculateTotal() {
+                let originalPrice = 0;
+
+                $('.bill-detail-item').each(function () {
+                    const price = parseFloat($(this).find('.product-select option:selected').data('price')) || 0;
+                    const quantity = parseInt($(this).find('.quantity').val()) || 0;
+                    const total = price * quantity;
+                    originalPrice += total;
+
+                    $(this).find('.total').val(total.toLocaleString() + ' ₫');
+                });
+
+                const discountAmount = parseFloat($('#discountAmount').val()) || 0;
+                const discountedTotal = Math.max(0, originalPrice - discountAmount);
+
+                $('#originalPriceDisplay').text(originalPrice.toLocaleString() + ' ₫');
+                $('#discountedTotalDisplay').text(discountedTotal.toLocaleString() + ' ₫');
+            }
+
+            calculateTotal();
+        });
+    </script>
+}

@@ -1,0 +1,134 @@
+﻿@model HatiShop.Models.Bill
+
+@{
+    ViewData["Title"] = "Chi tiết đơn hàng";
+}
+
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-sm-6">
+            <h1 class="h3 mb-0 text-gray-800">@ViewData["Title"]</h1>
+        </div>
+        <div class="col-sm-6 text-right">
+            <a asp-action="Index" class="d-none d-sm-inline-block btn btn-sm btn-secondary shadow-sm">
+                <i class="fas fa-arrow-left fa-sm text-white-50"></i> Quay lại danh sách
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Thông tin đơn hàng</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Mã đơn hàng:</label>
+                                <p class="form-control-plaintext">@Model.Id</p>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Khách hàng:</label>
+                                <p class="form-control-plaintext">@Model.Customer.FullName</p>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Nhân viên:</label>
+                                <p class="form-control-plaintext">@Model.Staff.FullName</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="font-weight-bold">Ngày tạo:</label>
+                                <p class="form-control-plaintext">@Model.CreationTime.ToString("dd/MM/yyyy HH:mm")</p>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Tổng tiền:</label>
+                                <p class="form-control-plaintext text-success font-weight-bold">@Model.OriginalPrice.ToString("N0") ₫</p>
+                            </div>
+                            <div class="form-group">
+                                <label class="font-weight-bold">Thành tiền:</label>
+                                <p class="form-control-plaintext text-success font-weight-bold">@Model.DiscountedTotal.ToString("N0") ₫</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Tổng quan</h6>
+                </div>
+                <div class="card-body">
+                    <div class="text-center">
+                        <div class="mb-3">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Tổng tiền</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.OriginalPrice.ToString("N0") ₫</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">Giảm giá</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">@Model.DiscountAmount.ToString("N0") ₫</div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Thành tiền</div>
+                            <div class="h5 mb-0 font-weight-bold text-success">@Model.DiscountedTotal.ToString("N0") ₫</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Chi tiết sản phẩm</h6>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>Tên sản phẩm</th>
+                            <th class="text-right">Số lượng</th>
+                            <th class="text-right">Thành tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var detail in Model.BillDetails)
+                        {
+                            <tr>
+                                <td>@detail.Product.Name</td>
+                                <td class="text-right">@detail.Quantity</td>
+                                <td class="text-right text-success font-weight-bold">@detail.Total.ToString("N0") ₫</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr class="font-weight-bold text-success">
+                            <td colspan="2" class="text-right">Tổng cộng:</td>
+                            <td class="text-right">@Model.DiscountedTotal.ToString("N0") ₫</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group text-center">
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning btn-icon-split">
+            <span class="icon text-white-50">
+                <i class="fas fa-edit"></i>
+            </span>
+            <span class="text">Sửa đơn hàng</span>
+        </a>
+        <a asp-action="Index" class="btn btn-secondary btn-icon-split">
+            <span class="icon text-white-50">
+                <i class="fas fa-arrow-left"></i>
+            </span>
+            <span class="text">Quay lại danh sách</span>
+        </a>
+    </div>
+</div>

@@ -1,8 +1,7 @@
 ﻿// Services/StaffService.cs
-using Microsoft.AspNetCore.Hosting;
 using HatiShop.Models;
 using HatiShop.Repositories;
-using HatiShop.Services;
+using HatiShop.Data;
 
 namespace HatiShop.Services
 {
@@ -17,125 +16,7 @@ namespace HatiShop.Services
             _environment = environment;
         }
 
-        public async Task<ServiceResult> CreateStaffAsync(Staff staff, IFormFile? avatarFile)
-        {
-            try
-            {
-                // Check unique constraints
-                if (await _staffRepository.UsernameExistsAsync(staff.Username))
-                    return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
-
-                if (!string.IsNullOrEmpty(staff.Email) && await _staffRepository.EmailExistsAsync(staff.Email))
-                    return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
-
-                if (!string.IsNullOrEmpty(staff.PhoneNumber) && await _staffRepository.PhoneExistsAsync(staff.PhoneNumber))
-                    return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
-
-                // Handle avatar upload
-                if (avatarFile != null)
-                {
-                    staff.AvatarPath = await SaveAvatarAsync(avatarFile);
-                }
-
-                // Generate ID if not provided
-                if (string.IsNullOrEmpty(staff.Id))
-                {
-                    staff.Id = "STAFF_" + DateTime.Now.ToString("yyyyMMddHHmmss");
-                }
-
-                var result = await _staffRepository.CreateAsync(staff);
-                return new ServiceResult
-                {
-                    Success = result,
-                    Message = result ? "Tạo nhân viên thành công" : "Tạo nhân viên thất bại"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
-            }
-        }
-
-        public async Task<ServiceResult> UpdateStaffAsync(Staff staff, IFormFile? avatarFile)
-        {
-            try
-            {
-                var existingStaff = await _staffRepository.GetByIdAsync(staff.Id);
-                if (existingStaff == null)
-                    return new ServiceResult { Success = false, Message = "Không tìm thấy nhân viên" };
-
-                // Check unique constraints excluding current staff
-                if (await _staffRepository.GetByUsernameAsync(staff.Username) is Staff user && user.Id != staff.Id)
-                    return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
-
-                if (!string.IsNullOrEmpty(staff.Email) &&
-                    await _staffRepository.GetByEmailAsync(staff.Email) is Staff emailUser && emailUser.Id != staff.Id)
-                    return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
-
-                if (!string.IsNullOrEmpty(staff.PhoneNumber) &&
-                    await _staffRepository.GetByPhoneAsync(staff.PhoneNumber) is Staff phoneUser && phoneUser.Id != staff.Id)
-                    return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
-
-                // Handle avatar upload
-                if (avatarFile != null)
-                {
-                    // Delete old avatar if exists
-                    if (!string.IsNullOrEmpty(existingStaff.AvatarPath))
-                    {
-                        DeleteAvatar(existingStaff.AvatarPath);
-                    }
-                    staff.AvatarPath = await SaveAvatarAsync(avatarFile);
-                }
-                else
-                {
-                    staff.AvatarPath = existingStaff.AvatarPath;
-                }
-
-                var result = await _staffRepository.UpdateAsync(staff);
-                return new ServiceResult
-                {
-                    Success = result,
-                    Message = result ? "Cập nhật nhân viên thành công" : "Cập nhật nhân viên thất bại"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
-            }
-        }
-
-        public async Task<ServiceResult> DeleteStaffAsync(string id)
-        {
-            try
-            {
-                var staff = await _staffRepository.GetByIdAsync(id);
-                if (staff == null)
-                    return new ServiceResult { Success = false, Message = "Không tìm thấy nhân viên" };
-
-                // Delete avatar file if exists
-                if (!string.IsNullOrEmpty(staff.AvatarPath))
-                {
-                    DeleteAvatar(staff.AvatarPath);
-                }
-
-                var result = await _staffRepository.DeleteAsync(id);
-                return new ServiceResult
-                {
-                    Success = result,
-                    Message = result ? "Xóa nhân viên thành công" : "Xóa nhân viên thất bại"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
-            }
-        }
-
-        public async Task<Staff?> GetStaffByIdAsync(string id)
-        {
-            return await _staffRepository.GetByIdAsync(id);
-        }
-
+        // Thêm method mới
         public async Task<IEnumerable<Staff>> GetAllStaffAsync()
         {
             return await _staffRepository.GetAllAsync();
@@ -143,6 +24,9 @@ namespace HatiShop.Services
 
         public async Task<IEnumerable<Staff>> SearchStaffAsync(string searchType, string searchValue)
         {
+            if (string.IsNullOrEmpty(searchValue))
+                return await _staffRepository.GetAllAsync();
+
             return searchType?.ToLower() switch
             {
                 "name" => await _staffRepository.SearchByNameAsync(searchValue),
@@ -174,6 +58,45 @@ namespace HatiShop.Services
             }
         }
 
+        // Các method khác giữ nguyên từ trước...
+        public async Task<ServiceResult> CreateStaffAsync(Staff staff, IFormFile? avatarFile)
+        {
+            try
+            {
+                // Check if staff ID already exists
+                if (await _staffRepository.GetByIdAsync(staff.Id) != null)
+                    return new ServiceResult { Success = false, Message = "Mã NV đã tồn tại" };
+
+                // Check unique constraints
+                if (await _staffRepository.GetByUsernameAsync(staff.Username) != null)
+                    return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
+
+                if (!string.IsNullOrEmpty(staff.Email) && await _staffRepository.GetByEmailAsync(staff.Email) != null)
+                    return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
+
+                if (!string.IsNullOrEmpty(staff.PhoneNumber) && await _staffRepository.GetByPhoneAsync(staff.PhoneNumber) != null)
+                    return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
+
+                // Handle avatar upload
+                if (avatarFile != null && avatarFile.Length > 0)
+                {
+                    staff.AvatarPath = await SaveAvatarAsync(avatarFile);
+                }
+
+                var result = await _staffRepository.CreateAsync(staff);
+
+                return new ServiceResult
+                {
+                    Success = result,
+                    Message = result ? "Tạo nhân viên thành công" : "Tạo nhân viên thất bại"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
+            }
+        }
+
         public async Task<string> SaveAvatarAsync(IFormFile avatarFile)
         {
             if (avatarFile == null || avatarFile.Length == 0)
@@ -194,6 +117,61 @@ namespace HatiShop.Services
             return $"/images/avatars/{uniqueFileName}";
         }
 
+        public async Task<ServiceResult> UpdateStaffAsync(Staff staff, IFormFile? avatarFile)
+        {
+            try
+            {
+                var existingStaff = await _staffRepository.GetByIdAsync(staff.Id);
+                if (existingStaff == null)
+                    return new ServiceResult { Success = false, Message = "Không tìm thấy nhân viên" };
+
+                // Check unique constraints
+                var existingUsername = await _staffRepository.GetByUsernameAsync(staff.Username);
+                if (existingUsername != null && existingUsername.Id != staff.Id)
+                    return new ServiceResult { Success = false, Message = "Tên đăng nhập đã tồn tại" };
+
+                if (!string.IsNullOrEmpty(staff.Email))
+                {
+                    var existingEmail = await _staffRepository.GetByEmailAsync(staff.Email);
+                    if (existingEmail != null && existingEmail.Id != staff.Id)
+                        return new ServiceResult { Success = false, Message = "Email đã tồn tại" };
+                }
+
+                if (!string.IsNullOrEmpty(staff.PhoneNumber))
+                {
+                    var existingPhone = await _staffRepository.GetByPhoneAsync(staff.PhoneNumber);
+                    if (existingPhone != null && existingPhone.Id != staff.Id)
+                        return new ServiceResult { Success = false, Message = "Số điện thoại đã tồn tại" };
+                }
+
+                // Handle avatar upload
+                if (avatarFile != null && avatarFile.Length > 0)
+                {
+                    if (!string.IsNullOrEmpty(existingStaff.AvatarPath))
+                    {
+                        DeleteAvatar(existingStaff.AvatarPath);
+                    }
+                    staff.AvatarPath = await SaveAvatarAsync(avatarFile);
+                }
+                else
+                {
+                    staff.AvatarPath = existingStaff.AvatarPath;
+                }
+
+                var result = await _staffRepository.UpdateAsync(staff);
+
+                return new ServiceResult
+                {
+                    Success = result,
+                    Message = result ? "Cập nhật nhân viên thành công" : "Cập nhật nhân viên thất bại"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
+            }
+        }
+
         private void DeleteAvatar(string avatarPath)
         {
             if (string.IsNullOrEmpty(avatarPath)) return;
@@ -203,6 +181,37 @@ namespace HatiShop.Services
             {
                 File.Delete(fullPath);
             }
+        }
+
+        public async Task<ServiceResult> DeleteStaffAsync(string id)
+        {
+            try
+            {
+                var staff = await _staffRepository.GetByIdAsync(id);
+                if (staff == null)
+                    return new ServiceResult { Success = false, Message = "Không tìm thấy nhân viên" };
+
+                if (!string.IsNullOrEmpty(staff.AvatarPath))
+                {
+                    DeleteAvatar(staff.AvatarPath);
+                }
+
+                var result = await _staffRepository.DeleteAsync(id);
+                return new ServiceResult
+                {
+                    Success = result,
+                    Message = result ? "Xóa nhân viên thành công" : "Xóa nhân viên thất bại"
+                };
+            }
+            catch (Exception ex)
+            {
+                return new ServiceResult { Success = false, Message = $"Lỗi: {ex.Message}" };
+            }
+        }
+
+        public async Task<Staff?> GetStaffByIdAsync(string id)
+        {
+            return await _staffRepository.GetByIdAsync(id);
         }
     }
 }

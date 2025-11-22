@@ -1,5 +1,5 @@
 ﻿// Services/IStaffService.cs
-using HatiShop.Models;  // Đảm bảo có dòng này
+using HatiShop.Models;
 
 namespace HatiShop.Services
 {
@@ -12,6 +12,5 @@ namespace HatiShop.Services
         Task<IEnumerable<Staff>> GetAllStaffAsync();
         Task<IEnumerable<Staff>> SearchStaffAsync(string searchType, string searchValue);
         Task<ServiceResult> LoginAsync(string username, string password);
-        Task<string> SaveAvatarAsync(IFormFile avatarFile);
     }
 }
